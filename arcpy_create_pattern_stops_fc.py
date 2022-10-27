@@ -2,10 +2,6 @@ import pandas as pd
 import os
 import arcpy
 
-# Set this variable to true to export a pattern stop csv 
-create_csv = False
-run_script = True
-
 def createtripslist(fpath):
     # Read trips and route csv files
     trips = pd.read_csv(fpath + r"\\trips.txt")
@@ -48,7 +44,7 @@ def patternstopslist2(fpath, trips_df): # For each unique shapeid, make a list o
     df.rename(columns={'trip_id':'sample_trip_id'},inplace=True)
     return df
 
-def createpatternstopsdf(file_dir):
+def createpatternstopsdf(file_dir,csv_export=False):
     # Get list of gtfs folders provided
     borough = [f for f in os.listdir(file_dir)]
     gtfs_paths = [os.path.join(file_dir,f) for f in borough]
@@ -64,8 +60,8 @@ def createpatternstopsdf(file_dir):
         agency_dfs.append(stopdf)
         print(agency, ' data successfully processed')
     allpatternstops = pd.concat(agency_dfs)
-    if create_csv==True:
-        allpatternstops.to_csv(file_dir + r'\pattern_stops_merged.csv', index=False)
+    if csv_export==True:
+        allpatternstops.to_csv(file_dir + r'\pattern_stops_merged_' + os.path.split(file_dir)[1] + r'.csv', index=False)
     return allpatternstops
 
 def getfields(df): # Get fields from dataframe.
@@ -109,17 +105,17 @@ def write_patternstop_data(stopdf, newfc):
                 notinserted.append(row_to_insert)
     print('Number of stops: ', len(stopdf), ' Number of rows not inserted: ', len(notinserted))
 
-def make_patternstop_fc(file_dir,gdb,name,trackingfield=None):
+def make_patternstop_fc(file_dir,gdb,name,csv_export=False,trackingfield=None):
     # Make a new feature class if it doesn't already exist
     new_fc = gdb + r'\\' + name
     if arcpy.Exists(new_fc)==False:
         arcpy.CreateFeatureclass_management(gdb, name, "POINT",spatial_reference = 4326)
         print('New pattern stops feature class created')
     # Make the new pattern stops dataframe
-    boroughs_df = createpatternstopsdf(file_dir)
+    boroughs_df = createpatternstopsdf(file_dir,csv_export)
     # Write the contents of each dataframe to the feature class
     if trackingfield == None:
-        write_patternstop_data(boroughs_df,new_fc)
+        write_patternstop_data(boroughs_df,new_fc,)
     else:
         borough = boroughs_df[trackingfield].unique().tolist()
         for bor in borough:
@@ -127,8 +123,42 @@ def make_patternstop_fc(file_dir,gdb,name,trackingfield=None):
             print('For GTFS file: ', bor)
             write_patternstop_data(oneborough,new_fc)
 
+# Ask whether to run script
+while True:
+    make = input(r'Excecute script and create feature class? (y/n): ')
+    if make not in ['y','Y','n','N']:
+        print(r'Incorrect input. Please type either y or n')
+        continue
+    else:
+        if make == 'y' or make == 'Y':
+            run_script = True
+        else:
+            run_script = False
+        break
+
+# Ask whether to export a csv of stops
+while True:
+    create = input(r'Export a csv file of stops? (y/n): ')
+    if create not in ['y','Y','n','N']:
+        print(r'Incorrect input. Please type either y or n')
+        continue
+    else:
+        if create == 'y' or create == 'Y':
+            create_csv = True
+        else:
+            create_csv = False
+        break
+
 if __name__ == "__main__" and run_script == True:
-    loc = r"C:\Users\1280530\GIS\GTFS to Feature Class\02_OtherData\gtfs_2022_06\zipFiles"
-    newgdb = r'C:\Users\1280530\GIS\GTFS to Feature Class\Points_Near.gdb'
-    name = 'bus_patternstops_202206_test'
-    make_patternstop_fc(loc, newgdb, name, trackingfield='source')
+    loc_in = input(r'Input directory of GTFS folders:')
+    loc = loc_in.strip('"\'')
+    newgdb_in = input(r'Input out ArcGIS geodatabase directory: ')
+    newgdb = newgdb_in.strip('"\'')
+    name_in = input(r'Input name of the new pattern stops feature class: ')
+    name = name_in.strip('"\'')
+    make_patternstop_fc(loc, newgdb, name, create_csv, trackingfield='source')
+
+# Sample file paths
+ #   loc = r"C:\Users\1280530\GIS\GTFS to Feature Class\02_OtherData\gtfs_2022_09\zipFiles"
+ #   newgdb = r"C:\Users\1280530\GIS\GTFS to Feature Class\Points_Near.gdb"
+ #   name = 'bus_patternstops_202209'
