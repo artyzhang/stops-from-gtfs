@@ -115,7 +115,7 @@ def make_patternstop_fc(file_dir,gdb,name,csv_export=False,trackingfield=None):
     boroughs_df = createpatternstopsdf(file_dir,csv_export)
     # Write the contents of each dataframe to the feature class
     if trackingfield == None:
-        write_patternstop_data(boroughs_df,new_fc,)
+        write_patternstop_data(boroughs_df,new_fc)
     else:
         borough = boroughs_df[trackingfield].unique().tolist()
         for bor in borough:
